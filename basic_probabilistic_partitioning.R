@@ -14,43 +14,12 @@ em_basic = function(c,q,data) {
         p[i,] = q*exp(l[i,]-max(l[i,])); p[i,] = p[i,]/sum(p[i,])}
     q = colMeans(p)
     c = (t(p) %*% data)/colSums(p)
-    c <<-c; q <<-q; p <<-p;
+    
+    #c <<-c; q <<-q; p <<-p;
+    return(list(c=c,q=q,p=p))
 }
 
 
-# Complete algorithm for partitioning with random seeds
-K=2; N=dim(data)[1]
-p=matrix(nrow=N, ncol=K)
-for(i in 1:K) {p[,i] = rbeta(N,N**-0.5,1)}
-c = (t(p) %*% data)/colSums(p)
-q=rep(1/K,K)
-
-for(i in 1:20) {em_basic(c,q,data)}
-
-# Iterative partitioning - standard version for two classes
-K=2; N=dim(data)[1]; L=dim(data)[2]
-c=matrix(data=colMeans(data), nrow=1, ncol=L)
-flat=matrix(data= mean(data), nrow=1, ncol=L)
-q = 1
-for (m in 1:(K-1)) {
-    c = rbind(flat,c)
-    q = c(1/m,q); q = q/sum(q)
-    for(i in 1:20) {em_basic(c,q,data)}
-}
-
-# Iterative EM partitioning with untrained flat class
-K=2; N=dim(data)[1];
-L=dim(data)[2]
-c = matrix(data=colMeans(data), nrow=1, ncol=L)
-flat = matrix(data= mean(data), nrow=1, ncol=L)
-q = 1
-for (m in 1:(K-1)) {
-    c = rbind(flat,c)
-    q = c(1/m,q); q = q/sum(q)
-    for(i in 1:20) {
-        c[1,]=flat;
-        em_basic(c,q,data)}
-}
 
 
 

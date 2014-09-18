@@ -87,8 +87,7 @@ create_dataset3 <- function() {
     data2 = matrix(NA,nrow=n_samples, ncol=100)
     for(sample in 1:n_samples) {
         lambda = dnorm(1:100, class2_m, class2_s)
-        lambda = f*lambda
-        /sum(lambda)
+        lambda = f*lambda/sum(lambda)
         data2[sample,] = rpois(100,lambda)
     }
     data3 = matrix(NA,nrow=n_samples, ncol=100)
