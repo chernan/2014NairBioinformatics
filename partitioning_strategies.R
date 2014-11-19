@@ -104,7 +104,7 @@ em_shape_shift <- function(c, q, data) {
     rm=matrix(nrow=N, ncol=S)
     for(k in 1:S) {rm[,k] = rowMeans(data[,k:(k+L-1)])}
     for(i in 1:N) { for (j in 1:K) { for (k in 1:S) {
-        l[i,j,k]=sum(dpois(data[i,k:(k+L-1)], c[j,] *rm[i,k],log=T)) }}}
+        l[i,j,k]=sum(dpois(data[i,k:(k+L-1)], c[j,] *rm[i,k],log=TRUE)) }}}
     for(i in 1:N) {
         p[i,,] = q*exp(l[i,,] - max(l[i,,])); p[i,,] = p[i,,]/sum(p[i,,])}
     q = apply(p, c(2,3), mean)
