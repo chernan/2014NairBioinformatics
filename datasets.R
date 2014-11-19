@@ -11,6 +11,9 @@
 #
 # Supplementary material:
 # http://bioinformatics.oxfordjournals.org/content/suppl/2014/05/07/btu318.DC1/nair2014_suppl.pdf
+#
+# Adapted by Celine HERNANDEZ (celine.hernandez@ens.fr) Thieffry Lab - IBENS - France
+#
 
 ##############################################################################################
 #
@@ -177,7 +180,6 @@ create_dataset4 <- function() {
 # partitioning was applied to the same subset of samples that was retained by CAGT. Both methods 
 # were forced to return exactly 10 classes."
 
-# They don't provide the code to do the counting.
 
 
 ##############################################################################################

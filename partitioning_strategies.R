@@ -11,7 +11,11 @@
 #
 # Supplementary material:
 # http://bioinformatics.oxfordjournals.org/content/suppl/2014/05/07/btu318.DC1/nair2014_suppl.pdf
+#
+# Adapted by Celine HERNANDEZ (celine.hernandez@ens.fr) Thieffry Lab - IBENS - France
+#
 
+##########################################################################################
 
 # Expectation-Maximization step for basic ChIP-partitioning algorithm
 #
