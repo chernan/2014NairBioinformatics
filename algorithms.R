@@ -333,6 +333,90 @@ iterative_untrained_algorithm.shape_shift_partitioning <- function(data, K=2, ma
     return(res)
 }
 
+# Complete algorithm for partitioning with random seeds
+#
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+#
+# Argument q is now a matrix with rows corresponding to classes and columns to shift indices
+#
+random_algorithm.shape_shift_partitioning_debug <- function(data, K=2, max_shift=1, iterations=20) {
+    #     N=dim(data)[1]
+    #     p=matrix(nrow=N, ncol=K)
+    #     for(i in 1:K) {p[,i] = rbeta(N,N**-0.5,1)}
+    #     c = (t(p) %*% data)/colSums(p)
+    
+    N=dim(data)[1]; L=dim(data)[2]
+    p=matrix(nrow=N, ncol=K)
+    for(i in 1:K) {p[,i] = rbeta(N,N**-0.5,1)}
+    range=(max_shift+1):(L-max_shift);
+    c = ((t(p) %*% data)/colSums(p))[,range] 
+    
+    # argument q is now a matrix with rows corresponding to classes and columns to shift indices.
+    q=matrix(rep(1/max_shift*K,max_shift*K), ncol=max_shift)
+    
+    res <- list(c=c, q=q, p=data)
+    for(i in 1:iterations) {
+        res <- em_shape_shift_debug(res$c,res$q,data)
+    }
+    
+    return(res)
+}
+
+# Iterative partitioning - standard version
+# 
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+# 
+iterative_std_algorithm.shape_shift_partitioning_debug <- function(data, K=2, max_shift=1, iterations=20) {
+    N=dim(data)[1]; L=dim(data)[2]
+    c=matrix(data=colMeans(data[,(max_shift+1):(L-max_shift)]), 
+             nrow=1, ncol=L-2*max_shift)
+    flat=matrix(data= mean(data), nrow=1, ncol=L-2*max_shift)
+    q = array(1,dim=c(1,max_shift))
+    
+    res <- list(c=c,q=q,p=data)
+    
+    for (m in 1:(K-1)) {
+        res$c = rbind(flat,res$c)
+        res$q = rbind(matrix(1, ncol=max_shift),res$q); res$q = res$q/sum(res$q)
+        
+        for(i in 1:iterations) {res <- em_shape_shift_debug(res$c,res$q,data)}
+    }
+    
+    return(res)
+}
+
+# Iterative EM partitioning with untrained flat class
+# 
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+# 
+iterative_untrained_algorithm.shape_shift_partitioning_debug <- function(data, K=2, max_shift=1, iterations=20) {
+    N=dim(data)[1];
+    L=dim(data)[2]
+    c=matrix(data=colMeans(data[,(max_shift+1):(L-max_shift)]), 
+             nrow=1, ncol=L-2*max_shift)
+    flat=matrix(data= mean(data), nrow=1, ncol=L-2*max_shift)
+    q = array(1,dim=c(1,max_shift))
+    
+    res <- list(c=c,q=q,p=data)
+    
+    for (m in 1:(K-1)) {
+        res$c = rbind(flat,res$c)
+        res$q = rbind(matrix(1, ncol=max_shift),res$q); res$q = res$q/sum(res$q)
+        for(i in 1:iterations) {
+            res$c[1,]=flat;
+            res <- em_shape_shift_debug(res$c,res$q,data)
+        }
+    }
+    
+    return(res)
+}
+
 ##############################################################################################
 #
 # Functions with each algorithm (random seeds, iterative standard, iterative EM),

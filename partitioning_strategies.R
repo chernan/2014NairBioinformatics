@@ -121,6 +121,60 @@ em_shape_shift <- function(c, q, data) {
     return(list(c=c,q=q,p=p))
 }
 
+# Shape-based partitioning with shifts
+#
+# c, exp_bin_counts: a matrix containing the classes to be optimized. c[i,j] is the expected bin count value of class i at position j.
+# q: a matrix with rows corresponding to classes and columns to shift indices
+# data: a matrix containing the samples. data[i,j] is the bin count of sample i at position j.
+# 
+# NB: Mail received from P. Bucher (19/11/2014)
+# ...potential bug in the
+# code that I recently discovered. The following lines
+# 
+# c = 0; for(k in 1:S) {
+#     c = c + (t(p[,,k]) %*% data[,k:(k+L-1)])/colSums(p[,,k])}
+# c = c / apply(p,2,sum)
+# 
+# in the function em_shape_shift (see supplementary data) appears
+# to inconsistent with formula 11 in the main text. It should be
+# 
+# c = 0; for(k in 1:S) {
+#     c = c + (t(p[,,k]) %*% data[,k:(k+L-1)])}
+# c = c / apply(p,2,sum)
+# 
+# In many cases, both versions produce meaningful results. We will
+# investigate this issue in more detail before taking any action.
+# In the meantime, I suggest you try both versions.
+#
+em_shape_shift_debug <- function(c, q, data) {
+    K = dim(c)[1]; # nb of classes
+    L = dim(c)[2]; # length of samples
+    N = dim(data)[1]; # nb of samples
+    S = dim(q)[2] # ncol shifts
+    l = array(dim=c(N,K,S)); p=array(dim=c(N,K,S))
+    for(i in 1:K) {
+        c[i,]=c[i,]/mean(c[i,])
+    }
+    rm=matrix(nrow=N, ncol=S)
+    for(k in 1:S) {rm[,k] = rowMeans(data[,k:(k+L-1)])}
+    for(i in 1:N) { for (j in 1:K) { for (k in 1:S) {
+        l[i,j,k]=sum(dpois(data[i,k:(k+L-1)], c[j,] *rm[i,k],log=TRUE)) }}}
+    for(i in 1:N) {
+        p[i,,] = q*exp(l[i,,] - max(l[i,,])); p[i,,] = p[i,,]/sum(p[i,,])}
+    q = apply(p, c(2,3), mean)
+    c = 0; for(k in 1:S) {
+        c = c + (t(p[,,k]) %*% data[,k:(k+L-1)])/colSums(p[,,k])}
+    c = c / apply(p,2,sum)
+    m=sum((1:S)*colSums(q)); s=sum(((1:S)-m)**2*colSums(q))**0.5
+    for (i in 1:K) {
+        q[i,] = sum(q[i,]) * dnorm(1:S,floor(S/2)+1,s) /
+            sum(dnorm(1:S,floor(S/2)+1,s))
+    }
+    
+    #c <<-c; q <<-q; p <<-p;
+    return(list(c=c,q=q,p=p))
+}
+
 # Shape-based partitioning with flips and shifts
 #
 # c: a matrix containing the classes to be optimized. c[i,j] is the expected bin count value of class i at position j.
