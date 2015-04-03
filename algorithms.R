@@ -513,3 +513,222 @@ iterative_untrained_algorithm.shape_shift_flip_partitioning <- function(data, K=
     return(res)
 }
 
+##############################################################################################
+#
+# Functions with corrections for the shape-based shifted partitioning and the three
+# different inicialization algorithm  (random seeds, iterative standard, iterative EM),
+# for the bugged and debugged versions of em_shape_shift().
+#
+##############################################################################################
+
+############################
+plot_classes = function(c) {
+   K=dim(c)[1]
+   colors = palette(rainbow(K))
+   for(i in 1:K) {
+      if(i != 1) {par(new=T)}
+      plot(c[i,], type = "l", ylim=c(0,max(c)), col=colors[i])
+      }
+   }
+
+
+###########################
+
+# Complete algorithm for partitioning with random seeds - Corrected: DONE Tested: NO
+#
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+#
+# Argument q is now a matrix with rows corresponding to classes and columns to shift indices
+#
+random_algorithm.shape_shift_partitioning.corrected <- function(data, K=2, max_shift=1, iterations=20, plot_it=FALSE, q="gauss") {
+    N=dim(data)[1]; L=dim(data)[2]
+    p=matrix(nrow=N, ncol=K)
+    for(i in 1:K) {p[,i] = rbeta(N,N**-0.5,1)}
+    range= (floor(max_shift/2)+1):(-floor(max_shift/2)+L);
+    c = ((t(p) %*% data)/colSums(p))[,range] 
+    
+    if(q=="gauss") {q = dnorm(1:max_shift, floor(max_shift/2)+1, 1) / sum(dnorm( 1:max_shift, floor(max_shift/2)+1,1) )
+                    q = t(replicate(max_shift,q))  }
+    if(q=="flat") { q=matrix(rep(1/max_shift*K,max_shift*K), ncol=max_shift) }
+    
+    res <- list(c=c, q=q, p=data)
+    for(i in 1:iterations) {
+        res <- em_shape_shift(res$c,res$q,data)
+        print(c("Class 1:",m+1,"   Iteration:",i)) 
+        if(plot_it){ plot_classes(res$c) } 
+    }
+    
+    return(res)
+}
+
+# Iterative partitioning - standard version - Corrected: DONE Tested: NO
+# 
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+# 
+iterative_std_algorithm.shape_shift_partitioning.corrected <- function(data, K=2, max_shift=1, iterations=20, plot_it=FALSE, q="gauss") {
+    N=dim(data)[1]; 
+    L=dim(data)[2]
+    c = colMeans(data[,(floor(max_shift/2)+1):(-floor(max_shift/2)+L)]) 
+    flat = matrix(data=mean(data), nrow=1, ncol=(L-max_shift+1)) 
+    
+
+    if(q=="gauss") {q0 = dnorm(1:max_shift, floor(max_shift/2)+1, 1) / sum(dnorm( 1:max_shift, floor(max_shift/2)+1,1) ) }
+    if(q=="flat") { q0 = matrix(rep(1/max_shift*K,max_shift*K), ncol=max_shift) }
+
+    q = q0
+    
+    res <- list(c=c,q=q,p=data)
+    
+    for (m in 1:(K-1)) {
+        res$c = rbind(flat,res$c)
+        res$q = rbind(q0/m,res$q); res$q = res$q/sum(res$q)  
+            for(i in 1:iterations) {
+            res <- em_shape_shift(res$c,res$q,data)
+            print(c("Class 1:",m+1,"   Iteration:",i)) 
+            if(plot_it){ plot_classes(res$c) } 
+            }
+    }  
+    return(res)
+}
+
+# Iterative EM partitioning with untrained flat class - Corrected: DONE Tested: NO
+# 
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+# *Not hardcoded to 2 classes anymore
+#
+iterative_untrained_algorithm.shape_shift_partitioning.corrected <- function(data, K=2, max_shift=1, iterations=20, plot_it=FALSE, q="gauss") {
+    N=dim(data)[1];
+    L=dim(data)[2];
+
+    c = colMeans(data[,(floor(max_shift/2)+1):(-floor(max_shift/2)+L)]) # number of col should be equal to the winow size
+    flat = matrix(data=mean(data), nrow=1, ncol=(L-max_shift+1)) # Bug in the code; ncol should be equal to the winow size, where window size = VectorLength - NbShift +1
+    
+    # The probabilities of having a shift in the data is now modeled with a normal distribution, where the higher probability is in the center meaning that no shift is required    
+    if(q=="gauss") {q0 = dnorm(1:max_shift, floor(max_shift/2)+1, 1) / sum(dnorm( 1:max_shift, floor(max_shift/2)+1,1) ) }
+    if(q=="flat") { q0 = matrix(rep(1/max_shift*K,max_shift*K), ncol=max_shift) }
+    q = q0
+    
+    res <- list(c=c,q=q,p=data)
+    
+    for (m in 1:(K-1)) {
+        res$c = rbind(flat,res$c)
+        res$q = rbind(q0/m,res$q); res$q = res$q/sum(res$q)  # corrected according to P. Bucher email. Quote: The prior probability of the new class is set to 1/m.
+        for(i in 1:iterations) {
+            res$c[1,]=flat;
+            res <- em_shape_shift(res$c,res$q,data)
+            print(c("Class 1:",m+1,"   Iteration:",i)) # progress indicator for waiting purposes 
+            if(plot_it){ plot_classes(res$c) } # shape of the classes are ploted if wanted 
+        }
+    }
+    return(res)
+}
+
+
+# Complete algorithm for partitioning with random seeds - Corrected: DONE Tested: NO
+#
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+#
+# Argument q is now a matrix with rows corresponding to classes and columns to shift indices
+#
+random_algorithm.shape_shift_partitioning_debug.corrected <- function(data, K=2, max_shift=1, iterations=20, plot_it=FALSE, q="gauss") {
+    N=dim(data)[1]; L=dim(data)[2]
+    p=matrix(nrow=N, ncol=K)
+    for(i in 1:K) {p[,i] = rbeta(N,N**-0.5,1)}
+    range= (floor(max_shift/2)+1):(-floor(max_shift/2)+L);
+    c = ((t(p) %*% data)/colSums(p))[,range] 
+    
+    if(q=="gauss") {q = dnorm(1:max_shift, floor(max_shift/2)+1, 1) / sum(dnorm( 1:max_shift, floor(max_shift/2)+1,1) )
+                    q = t(replicate(max_shift,q))  }
+    if(q=="flat") { q=matrix(rep(1/max_shift*K,max_shift*K), ncol=max_shift) }
+    
+    res <- list(c=c, q=q, p=data)
+    for(i in 1:iterations) {
+        res <- em_shape_shift_debug(res$c,res$q,data)
+        print(c("Class 1:",m+1,"   Iteration:",i)) 
+        if(plot_it){ plot_classes(res$c) } 
+    }
+    
+    return(res)
+}
+
+# Iterative partitioning - standard version - Corrected: DONE Tested: NO
+# 
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+# 
+iterative_std_algorithm.shape_shift_partitioning_debug.corrected <- function(data, K=2, max_shift=1, iterations=20, plot_it=FALSE, q="gauss") {
+    N=dim(data)[1]; 
+    L=dim(data)[2]
+    c = colMeans(data[,(floor(max_shift/2)+1):(-floor(max_shift/2)+L)]) 
+    flat = matrix(data=mean(data), nrow=1, ncol=(L-max_shift+1)) 
+    
+
+    if(q=="gauss") {q0 = dnorm(1:max_shift, floor(max_shift/2)+1, 1) / sum(dnorm( 1:max_shift, floor(max_shift/2)+1,1) ) }
+    if(q=="flat") { q0 = matrix(rep(1/max_shift*K,max_shift*K), ncol=max_shift) }
+
+    q = q0
+    
+    res <- list(c=c,q=q,p=data)
+    
+    for (m in 1:(K-1)) {
+        res$c = rbind(flat,res$c)
+        res$q = rbind(q0/m,res$q); res$q = res$q/sum(res$q)  
+            for(i in 1:iterations) {
+            res <- em_shape_shift_debug(res$c,res$q,data)
+            print(c("Class 1:",m+1,"   Iteration:",i)) 
+            if(plot_it){ plot_classes(res$c) } 
+            }
+    }  
+    return(res)
+}
+
+# Iterative EM partitioning with untrained flat class - Corrected: DONE Tested: NO
+# 
+# Default K (number of partitions) is 2 in article
+# Iteration number is 20 in article
+# max_shift is the maximal numer of shifts allowed. Should be at least 1.
+# *Not hardcoded to 2 classes anymore
+#
+iterative_untrained_algorithm.shape_shift_partitioning_debug.corrected <- function(data, K=2, max_shift=1, iterations=20, plot_it=FALSE, q="gauss") {
+    N=dim(data)[1];
+    L=dim(data)[2];
+
+    c = colMeans(data[,(floor(max_shift/2)+1):(-floor(max_shift/2)+L)]) # number of col should be equal to the winow size
+    flat = matrix(data=mean(data), nrow=1, ncol=(L-max_shift+1)) # Bug in the code; ncol should be equal to the winow size, where window size = VectorLength - NbShift +1
+    
+    # The probabilities of having a shift in the data is now modeled with a normal distribution, where the higher probability is in the center meaning that no shift is required    
+    if(q=="gauss") {q0 = dnorm(1:max_shift, floor(max_shift/2)+1, 1) / sum(dnorm( 1:max_shift, floor(max_shift/2)+1,1) ) }
+    if(q=="flat") { q0 = matrix(rep(1/max_shift*K,max_shift*K), ncol=max_shift) }
+    q = q0
+    
+    res <- list(c=c,q=q,p=data)
+    
+    for (m in 1:(K-1)) {
+        res$c = rbind(flat,res$c)
+        res$q = rbind(q0/m,res$q); res$q = res$q/sum(res$q)  # corrected according to P. Bucher email. Quote: The prior probability of the new class is set to 1/m.
+        for(i in 1:iterations) {
+            res$c[1,]=flat;
+            res <- em_shape_shift_debug(res$c,res$q,data)
+            print(c("Class 1:",m+1,"   Iteration:",i)) # progress indicator for waiting purposes 
+            if(plot_it){ plot_classes(res$c) } # shape of the classes are ploted if wanted 
+        }
+    }
+    return(res)
+}
+
+
+
+
+
+
+
+
